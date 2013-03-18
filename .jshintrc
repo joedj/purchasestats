@@ -1,0 +1,19 @@
+{
+    "globals" : {
+        "__PLACEHOLDER__" : true
+    },
+    "quotmark" : "single",
+    "indent" : 4,
+    "browser" : true,
+    "curly" : true,
+    "eqeqeq" : true,
+    "immed" : true,
+    "latedef" : true,
+    "noarg" : true,
+    "noempty" : true,
+    "undef" : true,
+    "unused" : true,
+    "strict" : true,
+    "trailing" : true,
+    "asi" : true
+}

@@ -1,0 +1,6 @@
+obj
+.theos
+theos
+_
+*.deb
+*.js.min*

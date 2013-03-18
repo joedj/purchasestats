@@ -1,0 +1,15 @@
+Package: net.joedj.purchasestats
+Name: PurchaseStats
+Depends: firmware (>= 5.0), mobilesubstrate, com.chpwn.weeloader, org.thebigboss.customwidgeticons
+Version: 0.9
+Architecture: iphoneos-arm
+Description: Notification widget for Cydia Connect
+Author: joedj <purchasestats@joedj.net>
+Maintainer: BigBoss <bigboss@thebigboss.org>
+Section: Addons (NotificationCenter)
+Depiction: http://moreinfo.thebigboss.org/moreinfo/depiction.php?file=purchasestatsDp
+Homepage: http://moreinfo.thebigboss.org/moreinfo/depiction.php?file=purchasestatsDp
+Icon: file:///Library/WeeLoader/Plugins/PurchaseStats.bundle/PurchaseStats@2x.png
+Sponsor: thebigboss.org <http://thebigboss.org>
+Tag: role::developer
+dev: joejordan

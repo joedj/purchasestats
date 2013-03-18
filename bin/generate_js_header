@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+
+import sys
+
+js_filename = sys.argv[1]
+define = js_filename.replace('.', '_').upper()
+header_filename = js_filename + '.h'
+
+js = open(js_filename, 'rb').read().strip()
+assert '"' not in js
+assert '\\' not in js
+js = js.replace('\n', '\\n')
+js = js.replace('__PLACEHOLDER__', '%@')
+
+open(header_filename, 'wb').write('#define %s @"%s"\n' % (define, js,))
