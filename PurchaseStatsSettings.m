@@ -23,6 +23,10 @@
     return [_dictionary[SETTINGS_KEY_AUTOREFRESH] boolValue];
 }
 
+- (PurchaseStatsAuthProvider)authProvider {
+    return [_dictionary[SETTINGS_KEY_AUTH_PROVIDER] isEqualToString:@"Facebook"] ? PurchaseStatsAuthProviderFacebook : PurchaseStatsAuthProviderGoogle;
+}
+
 - (BOOL)isConfigured {
     return self.username.length && self.password.length;
 }

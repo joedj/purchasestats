@@ -31,6 +31,18 @@
 
             [specs addObject:PSSpecifier.emptyGroupSpecifier];
 
+            PSSpecifier *authProvider = [PSSpecifier preferenceSpecifierNamed:@"Auth Provider" target:self
+                    set:@selector(setPreferenceValue:specifier:)
+                    get:@selector(readPreferenceValue:)
+                    detail:PSListItemsController.class cell:PSLinkListCell edit:nil];
+            [authProvider setProperty:SETTINGS_DOMAIN forKey:@"defaults"];
+            [authProvider setProperty:SETTINGS_DOMAIN forKey:@"PostNotification"];
+            [authProvider setProperty:SETTINGS_KEY_AUTH_PROVIDER forKey:@"key"];
+            [authProvider setProperty:@"Google" forKey:@"default"];
+            NSArray *authProviderValues = @[@"Google", @"Facebook"];
+            [authProvider setValues:authProviderValues titles:authProviderValues];
+            [specs addObject:authProvider];
+
             PSSpecifier *username = [PSSpecifier preferenceSpecifierNamed:@"Username" target:self
                     set:@selector(setPreferenceValue:specifier:)
                     get:@selector(readPreferenceValue:)

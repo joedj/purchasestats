@@ -1,12 +1,19 @@
 #import "PurchaseStatsFetcher.h"
 
 #import "AccountChooser.js.min.h"
+#import "FacebookLogin.js.min.h"
 #import "ScrapeProduct.js.min.h"
 #import "ScrapeProducts.js.min.h"
 
 #define INITIAL_MAX_REQUESTS 16
 #define AUTOFETCH_INTERVAL 300
 #define FETCH_TIMEOUT 240
+
+static NSString *stringToJSON(NSString *s, NSError **error) {
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:s options:(NSJSONWritingOptions)NSJSONReadingAllowFragments error:error];
+    NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    return jsonString;
+}
 
 @implementation PurchaseStatsFetcher {
     PurchaseStatsSettings *_settings;
@@ -209,11 +216,14 @@
         }
         [self loadNextProduct];
     } else if ([location hasPrefix:@"https://cydia.saurik.com/api/login"]) {
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 16; i++) {
             NSString *href = [webView stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:@"document.getElementsByTagName('a')[%i].href", i]];
             if (!href.length) {
                 break;
-            } else if ([href hasPrefix:@"https://www.google.com/accounts"]) {
+            } else if (
+                (_settings.authProvider == PurchaseStatsAuthProviderGoogle && [href hasPrefix:@"https://www.google.com/accounts"]) ||
+                (_settings.authProvider == PurchaseStatsAuthProviderFacebook && [href hasPrefix:@"http://m.facebook.com/dialog/oauth"])
+            ) {
                 if ([self _countRequest]) {
                     [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:href]]];
                 }
@@ -229,12 +239,27 @@
     } else if ([location hasPrefix:@"https://accounts.google.com/AccountChooser"]) {
         if ([self _countRequest]) {
             __autoreleasing NSError *error = nil;
-            NSData *jsUsernameData = [NSJSONSerialization dataWithJSONObject:_settings.username options:(NSJSONWritingOptions)NSJSONReadingAllowFragments error:&error];
-            NSString *jsUsername = [[NSString alloc] initWithData:jsUsernameData encoding:NSUTF8StringEncoding];
+            NSString *jsUsername = stringToJSON(_settings.username, &error);
             if (error || !jsUsername.length) {
-                [self _fail:[NSString stringWithFormat:@"Unable to serialize username as JSON: %@", error]];
+                [self _failHard:[NSString stringWithFormat:@"Unable to serialize username as JSON: %@", error]];
             } else if (![webView stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:ACCOUNTCHOOSER_JS_MIN, jsUsername]].length) {
                 [self _fail:@"Unable to find username in account chooser."];
+            }
+        }
+    } else if ([location hasPrefix:@"http://m.facebook.com/login.php"]) {
+        if ([self _countRequest]) {
+            __autoreleasing NSError *error = nil;
+            NSString *jsUsername = stringToJSON(_settings.username, &error);
+            if (error || !jsUsername.length) {
+                [self _failHard:[NSString stringWithFormat:@"Unable to serialize username as JSON: %@", error]];
+                return;
+            }
+            error = nil;
+            NSString *jsPassword = stringToJSON(_settings.password, &error);
+            if (error || !jsPassword.length) {
+                [self _failHard:[NSString stringWithFormat:@"Unable to serialize password as JSON: %@", error]];
+            } else if (![webView stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:FACEBOOKLOGIN_JS_MIN, jsUsername, jsPassword]].length) {
+                [self _fail:@"Unable to perform facebook login."];
             }
         }
     } else if ([location isEqualToString:PRODUCTS_URL]) {
