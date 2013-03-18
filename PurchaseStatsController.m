@@ -20,6 +20,10 @@
 #define LABEL_WIDTH(parent_width) ((parent_width) - LABEL_X - BACKGROUND_X_INSET)
 #define LABEL_HEIGHT ((HEIGHT - (LABEL_Y_PADDING * 2.f)) / 3.f)
 
+@interface UIImage ()
++ (UIImage *)imageNamed:(NSString *)name inBundle:(NSBundle *)bundle;
+@end
+
 @interface PurchaseStatsProductView: UIView
 @property (nonatomic, readonly) PurchaseStatsProduct *product;
 @end
@@ -33,15 +37,18 @@
 
 - (void)updateWithProduct:(PurchaseStatsProduct *)product {
     _product = product;
-    _label1.text = product.name;
-    NSString *delta = @"";
+    _label1.text = product.name ?: @"Unknown";
+    NSString *delta = @"(Swipe right to refresh)";
     if (product.direction.length && product.delta.length) {
         delta = [NSString stringWithFormat:@" (%@%@)", product.direction, product.delta];
     }
-    _label2.text = [NSString stringWithFormat:@"%@%@", product.incomeRate, delta];
+    _label2.text = [NSString stringWithFormat:@"%@%@", product.incomeRate ?: @"", delta];
     _label2.textColor = [product.direction isEqualToString:@"+"] ? [UIColor greenColor] : [UIColor redColor];
     _label3.text = [NSString stringWithFormat:@"Sales: %@ Pending: %@", product.totalSales ?: @"?", product.pendingEarnings ?: @"?"];
     _imageView.image = [UIImage imageWithData:[NSData dataWithContentsOfURL:[NSURL URLWithString:product.iconDataURL]]];
+    if (!_imageView.image) {
+        _imageView.image = [UIImage imageNamed:@"PurchaseStats" inBundle:[NSBundle bundleForClass:[self class]]];
+    }
 }
 
 - (void)_addLabel:(UILabel *)label {
