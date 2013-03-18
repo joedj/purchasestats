@@ -4,7 +4,6 @@
 #import "PurchaseStatsSettings.h"
 #import "PurchaseStatsStore.h"
 
-#define WIDTH 320.f
 #define HEIGHT 71.f
 
 #define BACKGROUND_X_INSET 2.f
@@ -18,7 +17,7 @@
 #define LABEL_X_PADDING 2.f
 #define LABEL_Y_PADDING 2.f
 #define LABEL_X (ICON_X + ICON_SIZE + ICON_X_PADDING + LABEL_X_PADDING)
-#define LABEL_WIDTH (WIDTH - LABEL_X - BACKGROUND_X_INSET)
+#define LABEL_WIDTH(parent_width) ((parent_width) - LABEL_X - BACKGROUND_X_INSET)
 #define LABEL_HEIGHT ((HEIGHT - (LABEL_Y_PADDING * 2.f)) / 3.f)
 
 @interface PurchaseStatsProductView: UIView
@@ -53,8 +52,8 @@
     [self addSubview:label];
 }
 
-- (id)initWithProduct:(PurchaseStatsProduct *)product {
-    if ((self = [super initWithFrame:(CGRect){CGPointZero, {WIDTH, HEIGHT}}])) {
+- (id)initWithProduct:(PurchaseStatsProduct *)product width:(CGFloat)width {
+    if ((self = [super initWithFrame:(CGRect){CGPointZero, {width, HEIGHT}}])) {
 
         UIView *background = [[UIView alloc] initWithFrame:CGRectInset(self.bounds, BACKGROUND_X_INSET, BACKGROUND_Y_INSET)];
         background.backgroundColor = UIColor.blackColor;
@@ -68,9 +67,9 @@
         _imageView = [[UIImageView alloc] initWithFrame:(CGRect){{ICON_X, ICON_Y}, {ICON_SIZE, ICON_SIZE}}];
         [self addSubview:_imageView];
 
-        _label1 = [[UILabel alloc] initWithFrame:(CGRect){{LABEL_X, LABEL_Y_PADDING + (LABEL_HEIGHT * 0.f)}, {LABEL_WIDTH, LABEL_HEIGHT}}];
-        _label2 = [[UILabel alloc] initWithFrame:(CGRect){{LABEL_X, LABEL_Y_PADDING + (LABEL_HEIGHT * 1.f)}, {LABEL_WIDTH, LABEL_HEIGHT}}];
-        _label3 = [[UILabel alloc] initWithFrame:(CGRect){{LABEL_X, LABEL_Y_PADDING + (LABEL_HEIGHT * 2.f)}, {LABEL_WIDTH, LABEL_HEIGHT}}];
+        _label1 = [[UILabel alloc] initWithFrame:(CGRect){{LABEL_X, LABEL_Y_PADDING + (LABEL_HEIGHT * 0.f)}, {LABEL_WIDTH(width), LABEL_HEIGHT}}];
+        _label2 = [[UILabel alloc] initWithFrame:(CGRect){{LABEL_X, LABEL_Y_PADDING + (LABEL_HEIGHT * 1.f)}, {LABEL_WIDTH(width), LABEL_HEIGHT}}];
+        _label3 = [[UILabel alloc] initWithFrame:(CGRect){{LABEL_X, LABEL_Y_PADDING + (LABEL_HEIGHT * 2.f)}, {LABEL_WIDTH(width), LABEL_HEIGHT}}];
 
         [self _addLabel:_label1];
         [self _addLabel:_label2];
@@ -132,7 +131,7 @@ static void settings_changed(CFNotificationCenterRef center, void *observer, CFS
         }
     }
     if (!viewExists) {
-        productView = [[PurchaseStatsProductView alloc] initWithProduct:product];
+        productView = [[PurchaseStatsProductView alloc] initWithProduct:product width:_scrollView.frame.size.width];
         [_productViews addObject:productView];
         [_scrollView addSubview:productView];
         CGSize size = _scrollView.contentSize;
@@ -216,7 +215,7 @@ static void settings_changed(CFNotificationCenterRef center, void *observer, CFS
 }
 
 - (void)loadPlaceholderView {
-    _view = [[UIView alloc] initWithFrame:(CGRect){CGPointZero, {WIDTH, HEIGHT}}];
+    _view = [[UIView alloc] initWithFrame:(CGRect){CGPointZero, {0, HEIGHT}}];
 }
 
 - (void)loadFullView {
