@@ -25,7 +25,6 @@
                 get:@selector(readPreferenceValue:)
                 detail:nil cell:PSSwitchCell edit:nil];
             [autoRefresh setProperty:SETTINGS_DOMAIN forKey:@"defaults"];
-            [autoRefresh setProperty:SETTINGS_DOMAIN forKey:@"PostNotification"];
             [autoRefresh setProperty:SETTINGS_KEY_PASSWORD forKey:@"key"];
             [specs addObject:autoRefresh];
 
@@ -36,7 +35,6 @@
                     get:@selector(readPreferenceValue:)
                     detail:PSListItemsController.class cell:PSLinkListCell edit:nil];
             [authProvider setProperty:SETTINGS_DOMAIN forKey:@"defaults"];
-            [authProvider setProperty:SETTINGS_DOMAIN forKey:@"PostNotification"];
             [authProvider setProperty:SETTINGS_KEY_AUTH_PROVIDER forKey:@"key"];
             [authProvider setProperty:@"Google" forKey:@"default"];
             NSArray *authProviderValues = @[@"Google", @"Facebook"];
@@ -49,7 +47,6 @@
                     detail:nil cell:PSEditTextCell edit:nil];
             [username setKeyboardType:UIKeyboardTypeEmailAddress autoCaps:UITextAutocapitalizationTypeNone autoCorrection:UITextAutocorrectionTypeDefault];
             [username setProperty:SETTINGS_DOMAIN forKey:@"defaults"];
-            [username setProperty:SETTINGS_DOMAIN forKey:@"PostNotification"];
             [username setProperty:SETTINGS_KEY_USERNAME forKey:@"key"];
             [username setProperty:@"username" forKey:@"prompt"];
             [specs addObject:username];
@@ -59,7 +56,6 @@
                     get:@selector(readPreferenceValue:)
                     detail:nil cell:PSSecureEditTextCell edit:nil];
             [password setProperty:SETTINGS_DOMAIN forKey:@"defaults"];
-            [password setProperty:SETTINGS_DOMAIN forKey:@"PostNotification"];
             [password setProperty:SETTINGS_KEY_PASSWORD forKey:@"key"];
             [password setProperty:@"password" forKey:@"prompt"];
             [specs addObject:password];
@@ -77,7 +73,6 @@
                             get:@selector(readPreferenceValue:)
                             detail:nil cell:PSSwitchCell edit:nil];
                     [productSpecifier setProperty:SETTINGS_DOMAIN forKey:@"defaults"];
-                    [productSpecifier setProperty:SETTINGS_DOMAIN forKey:@"PostNotification"];
                     [productSpecifier setProperty:product.productURL forKey:@"key"];
                     [productSpecifier setProperty:@YES forKey:@"default"];
                     if (%c(PurchaseStatsProductCell)) {

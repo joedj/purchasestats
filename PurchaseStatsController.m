@@ -105,26 +105,12 @@
 }
 
 - (void)dealloc {
-    CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)self, (__bridge CFStringRef)SETTINGS_DOMAIN, NULL);
-
     _fetcher.delegate = nil;
     [_fetcher stop];
     [_fetcher cancelAutoFetchTimer];
 
     _store.delegate = nil;
     [_store save];
-}
-
-- (void)reloadSettings {
-    _settings = [[PurchaseStatsSettings alloc] init];
-    _store.settings = _settings;
-    _fetcher.settings = _settings;
-}
-
-static void settings_changed(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [(__bridge PurchaseStatsView *)observer reloadSettings];
-    });
 }
 
 - (void)addOrUpdateViewForProduct:(PurchaseStatsProduct *)product {
@@ -211,13 +197,13 @@ static void settings_changed(CFNotificationCenterRef center, void *observer, CFS
 }
 
 - (void)loadFullView {
+    _settings = [[PurchaseStatsSettings alloc] init];
     _store = [[PurchaseStatsStore alloc] init];
     _store.delegate = self;
+    _store.settings = _settings;
     _fetcher = [[PurchaseStatsFetcher alloc] init];
     _fetcher.delegate = self;
-
-    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)self, &settings_changed, (__bridge CFStringRef)SETTINGS_DOMAIN, NULL, 0);
-    [self reloadSettings];
+    _fetcher.settings = _settings;
 
     _scrollView = [[UIScrollView alloc] initWithFrame:self.bounds];
     _scrollView.showsHorizontalScrollIndicator = NO;
