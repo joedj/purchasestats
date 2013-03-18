@@ -205,6 +205,7 @@ static void settings_changed(CFNotificationCenterRef center, void *observer, CFS
 
 - (void)purchaseStatsFetcher:(PurchaseStatsFetcher *)fetcher failed:(id)reason {
     [self finishedRefresh];
+    _activityView.color = UIColor.redColor;
 }
 
 - (void)purchaseStatsFetcher:(PurchaseStatsFetcher *)fetcher gotProductDictionary:(NSDictionary *)productDict {
