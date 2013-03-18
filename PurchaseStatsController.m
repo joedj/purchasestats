@@ -124,7 +124,7 @@ static void settings_changed(CFNotificationCenterRef center, void *observer, CFS
     BOOL viewExists = NO;
     PurchaseStatsProductView *productView = nil;
     for (productView in _productViews) {
-        if (productView.product.productURL == product.productURL || [productView.product.productURL isEqual:product.productURL]) {
+        if (productView.product.productURL == product.productURL || [productView.product.productURL isEqualToString:product.productURL]) {
             viewExists = YES;
             [productView updateWithProduct:product];
             break;
@@ -147,10 +147,7 @@ static void settings_changed(CFNotificationCenterRef center, void *observer, CFS
     CGPoint contentOffset = _scrollView.contentOffset;
     CGPoint contentLocation = CGPointMake(contentOffset.x + location.x, contentOffset.y + location.y);
     UIView *view = [_scrollView hitTest:contentLocation withEvent:nil];
-    while (view) {
-        if ([view isKindOfClass:PurchaseStatsProductView.class]) {
-            break;
-        }
+    while (view && ![view isKindOfClass:PurchaseStatsProductView.class]) {
         view = view.superview;
     }
     return (PurchaseStatsProductView *)view;
@@ -255,7 +252,7 @@ static void settings_changed(CFNotificationCenterRef center, void *observer, CFS
     _scrollView.contentOffset = contentOffset;
 
     _activityView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
-    _activityView.frame = CGRectMake(-_scrollView.frame.size.height, 0, _scrollView.frame.size.height, _scrollView.frame.size.height);
+    _activityView.frame = CGRectMake(-contentSize.height, 0, contentSize.height, contentSize.height);
     _activityView.hidesWhenStopped = NO;
     _activityView.color = UIColor.grayColor;
     [_scrollView addSubview:_activityView];
