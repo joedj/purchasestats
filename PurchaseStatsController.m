@@ -82,41 +82,48 @@
 
 @end
 
-@interface PurchaseStatsController: NSObject <BBWeeAppController, PurchaseStatsFetcherDelegate, PurchaseStatsStoreDelegate, PurchaseStatsMSPullToRefreshDelegate>
-@property (nonatomic) UIView *view;
+@interface PurchaseStatsView: UIView <PurchaseStatsFetcherDelegate, PurchaseStatsStoreDelegate, PurchaseStatsMSPullToRefreshDelegate>
 @end
 
-@implementation PurchaseStatsController {
+@implementation PurchaseStatsView {
     PurchaseStatsSettings *_settings;
     PurchaseStatsFetcher *_fetcher;
     PurchaseStatsStore *_store;
-    UIView *_view;
-    UIScrollView *_scrollView;
     PurchaseStatsMSPullToRefreshController *_pullToRefreshController;
+    NSString *_lastProductURL;
+    BOOL _needsLoadFullView;
+    UIScrollView *_scrollView;
     UIActivityIndicatorView *_activityView;
     NSMutableArray *_productViews;
-    NSString *_lastProductURL;
 }
 
-- (id)init {
-    if ((self = [super init])) {
-        _fetcher = [[PurchaseStatsFetcher alloc] init];
-        _fetcher.delegate = self;
+- (id)initWithLastProductURL:(NSString *)lastProductURL {
+    if ((self = [super initWithFrame:CGRectZero])) {
+        _lastProductURL = lastProductURL;
     }
     return self;
 }
 
+- (void)dealloc {
+    CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)self, (__bridge CFStringRef)SETTINGS_DOMAIN, NULL);
+
+    _fetcher.delegate = nil;
+    [_fetcher stop];
+    [_fetcher cancelAutoFetchTimer];
+
+    _store.delegate = nil;
+    [_store save];
+}
+
 - (void)reloadSettings {
-    if (_store) {
-        _settings = [[PurchaseStatsSettings alloc] init];
-        _store.settings = _settings;
-        _fetcher.settings = _settings;
-    }
+    _settings = [[PurchaseStatsSettings alloc] init];
+    _store.settings = _settings;
+    _fetcher.settings = _settings;
 }
 
 static void settings_changed(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [(__bridge PurchaseStatsController *)observer reloadSettings];
+        [(__bridge PurchaseStatsView *)observer reloadSettings];
     });
 }
 
@@ -174,15 +181,6 @@ static void settings_changed(CFNotificationCenterRef center, void *observer, CFS
     }
 }
 
-- (NSURL *)launchURLForTapLocation:(CGPoint)tapLocation {
-    PurchaseStatsProductView *view = [self productViewAtLocation:tapLocation];
-    NSURL *url = nil;
-    if (view) {
-        url = [NSURL URLWithString:view.product.productURL ?: PRODUCTS_URL];
-    }
-    return url;
-}
-
 - (void)purchaseStatsStore:(PurchaseStatsStore *)store updatedProduct:(PurchaseStatsProduct *)product {
     [self addOrUpdateViewForProduct:product];
     [self sortProductViews];
@@ -212,18 +210,16 @@ static void settings_changed(CFNotificationCenterRef center, void *observer, CFS
     [_store updateProductWithDictionary:productDict];
 }
 
-- (void)loadPlaceholderView {
-    _view = [[UIView alloc] initWithFrame:(CGRect){CGPointZero, {0, HEIGHT}}];
-}
-
 - (void)loadFullView {
     _store = [[PurchaseStatsStore alloc] init];
     _store.delegate = self;
+    _fetcher = [[PurchaseStatsFetcher alloc] init];
+    _fetcher.delegate = self;
 
     CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)self, &settings_changed, (__bridge CFStringRef)SETTINGS_DOMAIN, NULL, 0);
     [self reloadSettings];
 
-    _scrollView = [[UIScrollView alloc] initWithFrame:_view.bounds];
+    _scrollView = [[UIScrollView alloc] initWithFrame:self.bounds];
     _scrollView.showsHorizontalScrollIndicator = NO;
     _scrollView.showsVerticalScrollIndicator = NO;
     _scrollView.pagingEnabled = YES;
@@ -231,7 +227,7 @@ static void settings_changed(CFNotificationCenterRef center, void *observer, CFS
     CGSize contentSize = _scrollView.contentSize;
     contentSize.height = _scrollView.frame.size.height;
     _scrollView.contentSize = contentSize;
-    [_view addSubview:_scrollView];
+    [self addSubview:_scrollView];
 
     _productViews = [[NSMutableArray alloc] init];
     for (PurchaseStatsProduct *product in _store.visibleProducts) {
@@ -265,36 +261,20 @@ static void settings_changed(CFNotificationCenterRef center, void *observer, CFS
     }
 }
 
-- (void)unloadView {
-    CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)self, (__bridge CFStringRef)SETTINGS_DOMAIN, NULL);
-    _settings = nil;
-
-    [_fetcher stop];
-    [_fetcher cancelAutoFetchTimer];
-
-    [_store save];
-    _store.delegate = nil;
-    _store = nil;
-
-    PurchaseStatsProductView *productView = [self productViewAtLocation:CGPointZero];
-    if (productView) {
-        _lastProductURL = productView.product.productURL;
+- (void)loadFullViewWhenReady {
+    if (self.frame.size.width > 0.f) {
+        [self loadFullView];
+    } else {
+        _needsLoadFullView = YES;
     }
-
-    _view = nil;
-    _productViews = nil;
-    _pullToRefreshController = nil;
-    _activityView = nil;
-    _scrollView = nil;
 }
 
-- (void)dealloc {
-    _fetcher.delegate = nil;
-    [self unloadView];
-}
-
-- (float)viewHeight {
-    return HEIGHT;
+- (void)layoutSubviews {
+    if (_needsLoadFullView && self.frame.size.width > 0.f) {
+        _needsLoadFullView = NO;
+        [self loadFullView];
+    }
+    [super layoutSubviews];
 }
 
 - (BOOL)pullToRefreshController:(PurchaseStatsMSPullToRefreshController *)controller canRefreshInDirection:(MSRefreshDirection)direction {
@@ -320,10 +300,51 @@ static void settings_changed(CFNotificationCenterRef center, void *observer, CFS
 }
 
 - (void)pullToRefreshController:(PurchaseStatsMSPullToRefreshController *)controller didEngageRefreshDirection:(MSRefreshDirection)direction {
+    __weak UIScrollView *scrollView = _scrollView;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-        _scrollView.pagingEnabled = YES;
+        scrollView.pagingEnabled = YES;
     });
     [_fetcher fetch];
+}
+
+@end
+
+@interface PurchaseStatsController: NSObject <BBWeeAppController>
+@property (nonatomic, readonly) UIView *view;
+@end
+
+@implementation PurchaseStatsController {
+    PurchaseStatsView *_view;
+    NSString *_lastProductURL;
+}
+
+- (void)loadPlaceholderView {
+    _view = [[PurchaseStatsView alloc] initWithLastProductURL:_lastProductURL];
+}
+
+- (void)loadFullView {
+    [_view loadFullViewWhenReady];
+}
+
+- (void)unloadView {
+    PurchaseStatsProductView *productView = [_view productViewAtLocation:CGPointZero];
+    if (productView) {
+        _lastProductURL = productView.product.productURL;
+    }
+    _view = nil;
+}
+
+- (float)viewHeight {
+    return HEIGHT;
+}
+
+- (NSURL *)launchURLForTapLocation:(CGPoint)tapLocation {
+    PurchaseStatsProductView *view = [_view productViewAtLocation:tapLocation];
+    NSURL *url = nil;
+    if (view) {
+        url = [NSURL URLWithString:view.product.productURL ?: PRODUCTS_URL];
+    }
+    return url;
 }
 
 @end

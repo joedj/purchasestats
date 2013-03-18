@@ -39,11 +39,13 @@ static NSString *stringToJSON(NSString *s, NSError **error) {
     return self;
 }
 
+- (void)cancelAutoFetchTimer {
+    [_autoFetchTimer invalidate];
+    _autoFetchTimer = nil;
+}
+
 - (void)_resetAutoFetchTimer {
-    if (_autoFetchTimer) {
-        [_autoFetchTimer invalidate];
-        _autoFetchTimer = nil;
-    }
+    [self cancelAutoFetchTimer];
     if (_settings.autoRefresh) {
         _autoFetchTimer = [NSTimer scheduledTimerWithTimeInterval:AUTOFETCH_INTERVAL target:self selector:@selector(autoFetch) userInfo:nil repeats:NO];
     }
@@ -119,11 +121,6 @@ static NSString *stringToJSON(NSString *s, NSError **error) {
     if (_webView) {
         [self _cleanup];
     }
-}
-
-- (void)cancelAutoFetchTimer {
-    [_autoFetchTimer invalidate];
-    _autoFetchTimer = nil;
 }
 
 - (void)_win {
@@ -314,7 +311,7 @@ static NSString *stringToJSON(NSString *s, NSError **error) {
         NSString *totalSales = [productHTML substringWithRange:[match rangeAtIndex:1]];
         NSString *pendingEarnings = [productHTML substringWithRange:[match rangeAtIndex:2]];
         [_delegate purchaseStatsFetcher:self gotProductDictionary:@{
-            @"productURL" : cxn.originalRequest.URL,
+            @"productURL" : cxn.originalRequest.URL.absoluteString,
             @"totalSales" : totalSales,
             @"pendingEarnings" : pendingEarnings
         }];
