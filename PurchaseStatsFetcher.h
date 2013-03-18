@@ -4,7 +4,7 @@
 
 @protocol PurchaseStatsFetcherDelegate;
 
-@interface PurchaseStatsFetcher: NSObject <UIWebViewDelegate>
+@interface PurchaseStatsFetcher: NSObject <UIWebViewDelegate, NSURLConnectionDelegate>
 @property (nonatomic, weak) id<PurchaseStatsFetcherDelegate> delegate;
 - (void)setSettings:(PurchaseStatsSettings *)settings;
 - (void)fetch;

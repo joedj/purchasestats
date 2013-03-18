@@ -1,13 +1,15 @@
+#import <objc/runtime.h>
+
 #import "PurchaseStatsFetcher.h"
 
 #import "AccountChooser.js.min.h"
 #import "FacebookLogin.js.min.h"
-#import "ScrapeProduct.js.min.h"
 #import "ScrapeProducts.js.min.h"
 
 #define INITIAL_MAX_REQUESTS 16
 #define AUTOFETCH_INTERVAL 300
 #define FETCH_TIMEOUT 240
+#define PRODUCT_DATA_ASSOCIATION "net.joedj.purchasestats.productData"
 
 static NSString *stringToJSON(NSString *s, NSError **error) {
     NSData *jsonData = [NSJSONSerialization dataWithJSONObject:s options:(NSJSONWritingOptions)NSJSONReadingAllowFragments error:error];
@@ -21,16 +23,18 @@ static NSString *stringToJSON(NSString *s, NSError **error) {
     NSUInteger _requests;
     NSUInteger _maxRequests;
     NSUInteger _retries;
-    NSInteger _currentProduct;
-    NSMutableArray *_products;
+    NSMutableSet *_productConnections;
     NSDate *_lastFetch;
     NSTimer *_autoFetchTimer;
     NSTimer *_timeout;
+    NSRegularExpression *_productDataRegex;
 }
 
 - (id)init {
     if ((self = [super init])) {
-        _currentProduct = -1;
+        _productDataRegex = [NSRegularExpression regularExpressionWithPattern:
+            @"<label>Total Sales</label>\\s*<label>(.*?)</label>.*<label>Pending Earnings</label>\\s*<label>(.*?)</label>"
+            options:NSRegularExpressionDotMatchesLineSeparators error:NULL];
     }
     return self;
 }
@@ -46,8 +50,10 @@ static NSString *stringToJSON(NSString *s, NSError **error) {
 }
 
 - (void)_cleanup {
-    _currentProduct = -1;
-    _products = nil;
+    for (NSURLConnection *connection in _productConnections) {
+        [connection cancel];
+    }
+    _productConnections = nil;
     _webView.delegate = nil;
     [_webView stopLoading];
     _webView = nil;
@@ -189,33 +195,9 @@ static NSString *stringToJSON(NSString *s, NSError **error) {
     return YES;
 }
 
-- (BOOL)loadNextProduct {
-    _currentProduct++;
-    if (_currentProduct == _products.count) {
-        [self _win];
-        return YES;
-    }
-    if ([self _countRequest]) {
-        NSString *productURL = _products[_currentProduct];
-        if ([_settings isProductVisible:productURL]) {
-            [_webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:productURL]]];
-        } else {
-            [self loadNextProduct];
-        }
-        return YES;
-    }
-    return NO;
-}
-
 - (void)webViewDidFinishLoad:(UIWebView *)webView {
     NSString *location = [webView stringByEvaluatingJavaScriptFromString:@"document.location.href"];
-    if (_currentProduct >= 0 && [location hasPrefix:PRODUCTS_URL]) {
-        NSDictionary *productDict = [self webView:webView JSONObjectByEvaluatingJavaScript:SCRAPEPRODUCT_JS_MIN];
-        if (productDict) {
-            [_delegate purchaseStatsFetcher:self gotProductDictionary:productDict];
-        }
-        [self loadNextProduct];
-    } else if ([location hasPrefix:@"https://cydia.saurik.com/api/login"]) {
+    if ([location hasPrefix:@"https://cydia.saurik.com/api/login"]) {
         for (int i = 0; i < 16; i++) {
             NSString *href = [webView stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:@"document.getElementsByTagName('a')[%i].href", i]];
             if (!href.length) {
@@ -271,18 +253,21 @@ static NSString *stringToJSON(NSString *s, NSError **error) {
         NSArray *products = result[@"products"];
         if (products) {
             _maxRequests += products.count;
-            _currentProduct = -1;
-            _products = [[NSMutableArray alloc] init];
+            _productConnections = [[NSMutableSet alloc] init];
             for (NSDictionary *productDict in products) {
                 NSString *productURL = productDict[@"productURL"];
                 if (productURL) {
-                    [_products addObject:productURL];
                     [_delegate purchaseStatsFetcher:self gotProductDictionary:productDict];
+                    if ([self _countRequest]) {
+
+                    }
+                    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:productURL] cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:60.0];
+                    NSURLConnection *connection = [[NSURLConnection alloc] initWithRequest:request delegate:self];
+                    [_productConnections addObject:connection];
                 }
             }
-            [self loadNextProduct];
         } else {
-            [self _fail:@"Unable to scrape products"];
+            [self _fail:@"Unable to scrape products."];
         }
     } else {
         [self _fail:[NSString stringWithFormat:@"Where the bloody hell am I? %@", location]];
@@ -293,6 +278,54 @@ static NSString *stringToJSON(NSString *s, NSError **error) {
     if (!(error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled)) {
         [self _fail:error];
     }
+}
+
+- (void)productConnectionFinished:(NSURLConnection *)cxn reason:(id)reason {
+    [cxn cancel];
+    [_productConnections removeObject:cxn];
+    if (reason) {
+        [self _fail:reason];
+    } else if (!_productConnections.count) {
+        [self _win];
+    }
+}
+
+- (void)connection:(NSURLConnection *)cxn didReceiveResponse:(NSHTTPURLResponse *)response {
+    if (response.statusCode != 200) {
+        NSString *reason = [NSString stringWithFormat:@"Unable to scrape %@: %d %@",
+            cxn.originalRequest.URL,
+            response.statusCode,
+            [NSHTTPURLResponse localizedStringForStatusCode:response.statusCode]];
+        [self productConnectionFinished:cxn reason:reason];
+    }
+    objc_setAssociatedObject(cxn, PRODUCT_DATA_ASSOCIATION, [[NSMutableData alloc] init], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (void)connection:(NSURLConnection *)cxn didReceiveData:(NSData *)data {
+    [objc_getAssociatedObject(cxn, PRODUCT_DATA_ASSOCIATION) appendData:data];
+}
+
+- (void)connectionDidFinishLoading:(NSURLConnection *)cxn {
+    NSData *productData = objc_getAssociatedObject(cxn, PRODUCT_DATA_ASSOCIATION);
+    NSString *productHTML = [[NSString alloc] initWithData:productData encoding:NSUTF8StringEncoding];
+    NSString *reason = nil;
+    NSTextCheckingResult *match = [_productDataRegex firstMatchInString:productHTML options:0 range:NSMakeRange(0, productHTML.length)];
+    if (match) {
+        NSString *totalSales = [productHTML substringWithRange:[match rangeAtIndex:1]];
+        NSString *pendingEarnings = [productHTML substringWithRange:[match rangeAtIndex:2]];
+        [_delegate purchaseStatsFetcher:self gotProductDictionary:@{
+            @"productURL" : cxn.originalRequest.URL,
+            @"totalSales" : totalSales,
+            @"pendingEarnings" : pendingEarnings
+        }];
+    } else {
+        reason = [NSString stringWithFormat:@"Unable to scrape product: %@", cxn.originalRequest.URL];
+    }
+    [self productConnectionFinished:cxn reason:reason];
+}
+
+- (void)connection:(NSURLConnection *)cxn didFailWithError:(NSError *)error {
+    [self productConnectionFinished:cxn reason:error];
 }
 
 @end
