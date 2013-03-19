@@ -12,6 +12,14 @@
         box,
         product;
 
+    function stringAtPath(path) {
+        return document.evaluate(path, box, null, XPathResult.STRING_TYPE, null).stringValue.trim();
+    }
+
+    function nodeAtPath(path) {
+        return document.evaluate(path, box, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+    }
+
     for (i = 0; i < boxes.length; i++) {
         box = boxes[i];
 
@@ -26,23 +34,23 @@
         }
 
         if (!last) {
-            product.name = document.evaluate('.//label', box, null, XPathResult.STRING_TYPE, null).stringValue.trim();
+            product.name = stringAtPath('.//label');
         }
 
         if (first) {
-            iconURL = document.evaluate('.//div', box, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.style['background-image'];
+            iconURL = nodeAtPath('.//div').style['background-image'];
             if (iconURL) {
                 product.iconDataURL = iconURL.substring(4, iconURL.length - 1);
             }
         } else if (!last) {
-            iconURL = document.evaluate('.//img', box, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.src;
+            iconURL = nodeAtPath('.//img').src;
             icon.src = iconURL;
             canvas = document.createElement('canvas');
             canvas.width = icon.width;
             canvas.height = icon.height;
             canvas.getContext('2d').drawImage(icon, 0, 0);
             product.iconDataURL = canvas.toDataURL('image/png');
-            product.productURL = document.evaluate('./a', box, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.href;
+            product.productURL = nodeAtPath('./a').href;
             if (product.productURL.indexOf('https://cydia.saurik.com/connect/products/') !== 0) {
                 products.pop();
                 continue;
@@ -51,11 +59,11 @@
 
         if (!first) {
             if (last) {
-                box = document.evaluate('.//div', box, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                box = nodeAtPath('.//div');
             }
-            product.incomeRate = document.evaluate('.//div//div', box, null, XPathResult.STRING_TYPE, null).stringValue.trim();
-            product.delta = document.evaluate('.//div//div//span[2]', box, null, XPathResult.STRING_TYPE, null).stringValue.trim();
-            product.direction = (document.evaluate('.//div//div[last()]', box, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.style.color === 'red') ? '-' : '+';
+            product.incomeRate = stringAtPath('.//div//div');
+            product.delta = stringAtPath('.//div//div//span[2]');
+            product.direction = (nodeAtPath('.//div//div[last()]').style.color === 'red') ? '-' : '+';
         }
     }
 
