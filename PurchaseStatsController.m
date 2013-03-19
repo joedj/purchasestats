@@ -89,35 +89,73 @@
 
 @end
 
-@interface PurchaseStatsView: UIView <PurchaseStatsFetcherDelegate, PurchaseStatsStoreDelegate, PurchaseStatsMSPullToRefreshDelegate>
+@protocol PurchaseStatsViewDelegate;
+
+@interface PurchaseStatsView: UIView <PurchaseStatsMSPullToRefreshDelegate>
+@property (nonatomic, weak) id<PurchaseStatsViewDelegate> delegate;
+@end
+
+@protocol PurchaseStatsViewDelegate
+- (void)purchaseStatsViewReady:(PurchaseStatsView *)view;
+- (void)refreshPurchaseStats;
 @end
 
 @implementation PurchaseStatsView {
-    PurchaseStatsSettings *_settings;
-    PurchaseStatsFetcher *_fetcher;
-    PurchaseStatsStore *_store;
-    PurchaseStatsMSPullToRefreshController *_pullToRefreshController;
-    NSString *_lastProductURL;
-    BOOL _needsLoadFullView;
+    BOOL _needsFullViewLoad;
     UIScrollView *_scrollView;
     UIActivityIndicatorView *_activityView;
     NSMutableArray *_productViews;
+    PurchaseStatsMSPullToRefreshController *_pullToRefreshController;
 }
 
-- (id)initWithLastProductURL:(NSString *)lastProductURL {
-    if ((self = [super initWithFrame:CGRectZero])) {
-        _lastProductURL = lastProductURL;
+- (void)loadFullView {
+    _scrollView = [[UIScrollView alloc] initWithFrame:self.bounds];
+    _scrollView.showsHorizontalScrollIndicator = NO;
+    _scrollView.showsVerticalScrollIndicator = NO;
+    _scrollView.pagingEnabled = YES;
+    _scrollView.alwaysBounceHorizontal = YES;
+    CGSize contentSize = _scrollView.contentSize;
+    contentSize.height = _scrollView.frame.size.height;
+    _scrollView.contentSize = contentSize;
+    [self addSubview:_scrollView];
+
+    _pullToRefreshController = [[PurchaseStatsMSPullToRefreshController alloc] initWithScrollView:_scrollView delegate:self];
+
+    _activityView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
+    _activityView.frame = CGRectMake(-contentSize.height, 0, contentSize.height, contentSize.height);
+    _activityView.hidesWhenStopped = NO;
+    _activityView.color = UIColor.grayColor;
+    [_scrollView addSubview:_activityView];
+
+    _productViews = [[NSMutableArray alloc] init];
+
+    [_delegate purchaseStatsViewReady:self];
+}
+
+- (void)scheduleFullViewLoad {
+    if (self.frame.size.width > 0.f) {
+        [self loadFullView];
+    } else {
+        _needsFullViewLoad = YES;
     }
-    return self;
 }
 
-- (void)dealloc {
-    _fetcher.delegate = nil;
-    [_fetcher stop];
-    [_fetcher cancelAutoFetchTimer];
+- (void)layoutSubviews {
+    if (_needsFullViewLoad && self.frame.size.width > 0.f) {
+        _needsFullViewLoad = NO;
+        [self loadFullView];
+    }
+    [super layoutSubviews];
+}
 
-    _store.delegate = nil;
-    [_store save];
+- (PurchaseStatsProductView *)productViewAtLocation:(CGPoint)location {
+    CGPoint contentOffset = _scrollView.contentOffset;
+    CGPoint contentLocation = CGPointMake(contentOffset.x + location.x, contentOffset.y + location.y);
+    UIView *view = [_scrollView hitTest:contentLocation withEvent:nil];
+    while (view && ![view isKindOfClass:PurchaseStatsProductView.class]) {
+        view = view.superview;
+    }
+    return (PurchaseStatsProductView *)view;
 }
 
 - (void)addOrUpdateViewForProduct:(PurchaseStatsProduct *)product {
@@ -143,16 +181,6 @@
     }
 }
 
-- (PurchaseStatsProductView *)productViewAtLocation:(CGPoint)location {
-    CGPoint contentOffset = _scrollView.contentOffset;
-    CGPoint contentLocation = CGPointMake(contentOffset.x + location.x, contentOffset.y + location.y);
-    UIView *view = [_scrollView hitTest:contentLocation withEvent:nil];
-    while (view && ![view isKindOfClass:PurchaseStatsProductView.class]) {
-        view = view.superview;
-    }
-    return (PurchaseStatsProductView *)view;
-}
-
 - (void)sortProductViews {
     PurchaseStatsProductView *currentView = [self productViewAtLocation:CGPointZero];
     [_productViews sortUsingComparator:^(id v1, id v2) {
@@ -174,65 +202,12 @@
     }
 }
 
-- (void)purchaseStatsStore:(PurchaseStatsStore *)store updatedProduct:(PurchaseStatsProduct *)product {
-    [self addOrUpdateViewForProduct:product];
-    [self sortProductViews];
-}
-
-- (void)finishedRefresh {
-    [_activityView stopAnimating];
-    _activityView.color = UIColor.grayColor;
-    [_pullToRefreshController finishRefreshingDirection:MSRefreshDirectionLeft animated:YES];
-}
-
-- (void)purchaseStatsFetcherStarted:(PurchaseStatsFetcher *)fetcher {
-    _activityView.color = UIColor.whiteColor;
-    [_activityView startAnimating];
-}
-
-- (void)purchaseStatsFetcherFinished:(PurchaseStatsFetcher *)fetcher {
-    [self finishedRefresh];
-}
-
-- (void)purchaseStatsFetcher:(PurchaseStatsFetcher *)fetcher failed:(id)reason {
-    [self finishedRefresh];
-    _activityView.color = UIColor.redColor;
-}
-
-- (void)purchaseStatsFetcher:(PurchaseStatsFetcher *)fetcher gotProductDictionary:(NSDictionary *)productDict {
-    [_store updateProductWithDictionary:productDict];
-}
-
-- (void)loadFullView {
-    _settings = [[PurchaseStatsSettings alloc] init];
-    _store = [[PurchaseStatsStore alloc] init];
-    _store.delegate = self;
-    _store.settings = _settings;
-    _fetcher = [[PurchaseStatsFetcher alloc] init];
-    _fetcher.delegate = self;
-    _fetcher.settings = _settings;
-
-    _scrollView = [[UIScrollView alloc] initWithFrame:self.bounds];
-    _scrollView.showsHorizontalScrollIndicator = NO;
-    _scrollView.showsVerticalScrollIndicator = NO;
-    _scrollView.pagingEnabled = YES;
-    _scrollView.alwaysBounceHorizontal = YES;
-    CGSize contentSize = _scrollView.contentSize;
-    contentSize.height = _scrollView.frame.size.height;
-    _scrollView.contentSize = contentSize;
-    [self addSubview:_scrollView];
-
-    _productViews = [[NSMutableArray alloc] init];
-    for (PurchaseStatsProduct *product in _store.visibleProducts) {
-        [self addOrUpdateViewForProduct:product];
-    }
-    [self sortProductViews];
-
+- (void)showProduct:(NSString *)productURL {
     CGPoint contentOffset = CGPointZero;
-    if (_lastProductURL) {
+    if (productURL) {
         CGFloat x = 0.f;
         for (PurchaseStatsProductView *productView in _productViews) {
-            if ([productView.product.productURL isEqualToString:_lastProductURL]) {
+            if ([productView.product.productURL isEqualToString:productURL]) {
                 contentOffset.x = x;
                 break;
             }
@@ -240,34 +215,17 @@
         }
     }
     _scrollView.contentOffset = contentOffset;
-
-    _activityView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
-    _activityView.frame = CGRectMake(-contentSize.height, 0, contentSize.height, contentSize.height);
-    _activityView.hidesWhenStopped = NO;
-    _activityView.color = UIColor.grayColor;
-    [_scrollView addSubview:_activityView];
-
-    _pullToRefreshController = [[PurchaseStatsMSPullToRefreshController alloc] initWithScrollView:_scrollView delegate:self];
-
-    if (_settings.autoRefresh) {
-        [_fetcher autoFetch];
-    }
 }
 
-- (void)loadFullViewWhenReady {
-    if (self.frame.size.width > 0.f) {
-        [self loadFullView];
-    } else {
-        _needsLoadFullView = YES;
-    }
+- (void)startRefreshAnimation {
+    _activityView.color = UIColor.whiteColor;
+    [_activityView startAnimating];
 }
 
-- (void)layoutSubviews {
-    if (_needsLoadFullView && self.frame.size.width > 0.f) {
-        _needsLoadFullView = NO;
-        [self loadFullView];
-    }
-    [super layoutSubviews];
+- (void)stopRefreshAnimation:(BOOL)win {
+    [_pullToRefreshController finishRefreshingDirection:MSRefreshDirectionLeft animated:YES];
+    [_activityView stopAnimating];
+    _activityView.color = win ? UIColor.grayColor : UIColor.redColor;
 }
 
 - (BOOL)pullToRefreshController:(PurchaseStatsMSPullToRefreshController *)controller canRefreshInDirection:(MSRefreshDirection)direction {
@@ -297,33 +255,60 @@
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
         scrollView.pagingEnabled = YES;
     });
-    [_fetcher fetch];
+    [_delegate refreshPurchaseStats];
 }
 
 @end
 
-@interface PurchaseStatsController: NSObject <BBWeeAppController>
+@interface PurchaseStatsController: NSObject <BBWeeAppController,
+                                              PurchaseStatsViewDelegate,
+                                              PurchaseStatsFetcherDelegate,
+                                              PurchaseStatsStoreDelegate>
 @property (nonatomic, readonly) UIView *view;
 @end
 
 @implementation PurchaseStatsController {
     PurchaseStatsView *_view;
+    PurchaseStatsSettings *_settings;
+    PurchaseStatsFetcher *_fetcher;
+    PurchaseStatsStore *_store;
     NSString *_lastProductURL;
 }
 
+- (id)init {
+    if ((self = [super init])) {
+        _fetcher = [[PurchaseStatsFetcher alloc] init];
+        _fetcher.delegate = self;
+    }
+    return self;
+}
+
+- (void)dealloc {
+    [self unloadView];
+}
+
 - (void)loadPlaceholderView {
-    _view = [[PurchaseStatsView alloc] initWithLastProductURL:_lastProductURL];
+    _view = [[PurchaseStatsView alloc] init];
+    _view.delegate = self;
 }
 
 - (void)loadFullView {
-    [_view loadFullViewWhenReady];
+    [_view scheduleFullViewLoad];
 }
 
 - (void)unloadView {
-    PurchaseStatsProductView *productView = [_view productViewAtLocation:CGPointZero];
-    if (productView) {
-        _lastProductURL = productView.product.productURL;
-    }
+    [_fetcher stop];
+    [_fetcher cancelAutoFetchTimer];
+    _fetcher.settings = nil;
+
+    _store.delegate = nil;
+    [_store save];
+    _store = nil;
+
+    _settings = nil;
+    _lastProductURL = [_view productViewAtLocation:CGPointZero].product.productURL;
+
+    _view.delegate = nil;
     _view = nil;
 }
 
@@ -338,6 +323,52 @@
         url = [NSURL URLWithString:view.product.productURL ?: PRODUCTS_URL];
     }
     return url;
+}
+
+- (void)refreshPurchaseStats {
+    [_fetcher fetch];
+}
+
+- (void)purchaseStatsViewReady:(PurchaseStatsView *)view {
+    _settings = [[PurchaseStatsSettings alloc] init];
+    _store = [[PurchaseStatsStore alloc] init];
+    _store.delegate = self;
+    _store.settings = _settings;
+    _fetcher.settings = _settings;
+
+    for (PurchaseStatsProduct *product in _store.visibleProducts) {
+        [_view addOrUpdateViewForProduct:product];
+    }
+    [_view sortProductViews];
+
+    if (_lastProductURL) {
+        [_view showProduct:_lastProductURL];
+    }
+
+    if (_settings.autoRefresh) {
+        [_fetcher autoFetch];
+    }
+}
+
+- (void)purchaseStatsFetcherStarted:(PurchaseStatsFetcher *)fetcher {
+    [_view startRefreshAnimation];
+}
+
+- (void)purchaseStatsFetcherFinished:(PurchaseStatsFetcher *)fetcher {
+    [_view stopRefreshAnimation:YES];
+}
+
+- (void)purchaseStatsFetcher:(PurchaseStatsFetcher *)fetcher failed:(id)reason {
+    [_view stopRefreshAnimation:NO];
+}
+
+- (void)purchaseStatsFetcher:(PurchaseStatsFetcher *)fetcher gotProductDictionary:(NSDictionary *)productDict {
+    [_store updateProductWithDictionary:productDict];
+}
+
+- (void)purchaseStatsStore:(PurchaseStatsStore *)store updatedProduct:(PurchaseStatsProduct *)product {
+    [_view addOrUpdateViewForProduct:product];
+    [_view sortProductViews];
 }
 
 @end
