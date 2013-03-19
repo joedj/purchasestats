@@ -103,7 +103,7 @@
     }
     [_summary updateWithDictionary:@{
         @"totalSales" : [NSString stringWithFormat:@"%d", totalSales],
-        @"pendingEarnings" : [NSString stringWithFormat:@"$%.2f", pendingEarnings]
+        @"pendingEarnings" : [NSString stringWithFormat:@"$%.0f", pendingEarnings]
     }];
 }
 
