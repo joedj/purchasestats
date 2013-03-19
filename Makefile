@@ -15,7 +15,7 @@ PurchaseStatsSettings_FRAMEWORKS = UIKit
 PurchaseStatsSettings_PRIVATE_FRAMEWORKS = Preferences
 
 BUNDLE_NAME = PurchaseStats
-PurchaseStats_FILES = PurchaseStatsController.m PurchaseStatsSettings.m PurchaseStatsFetcher.m PurchaseStatsStore.m MSPullToRefreshController.m
+PurchaseStats_FILES = PurchaseStatsController.m PurchaseStatsView.m PurchaseStatsSettings.m PurchaseStatsFetcher.m PurchaseStatsStore.m MSPullToRefreshController.m
 PurchaseStats_INSTALL_PATH = /Library/WeeLoader/Plugins
 PurchaseStats_FRAMEWORKS = CoreGraphics UIKit
 
