@@ -7,7 +7,7 @@
 #import "ScrapeProducts.js.min.h"
 
 #define INITIAL_MAX_REQUESTS 16
-#define AUTOFETCH_INTERVAL 300
+#define AUTOFETCH_INTERVAL 1800
 #define FETCH_TIMEOUT 240
 #define PRODUCT_DATA_ASSOCIATION "net.joedj.purchasestats.productData"
 
