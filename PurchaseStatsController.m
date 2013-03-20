@@ -11,7 +11,6 @@
 
 @implementation PurchaseStatsController {
     PurchaseStatsView *_view;
-    PurchaseStatsSettings *_settings;
     PurchaseStatsFetcher *_fetcher;
     PurchaseStatsStore *_store;
     NSString *_lastProductURL;
@@ -47,7 +46,6 @@
     [_store save];
     _store = nil;
 
-    _settings = nil;
     _lastProductURL = [_view productURLAtLocation:CGPointZero].absoluteString;
 
     _view.delegate = nil;
@@ -63,11 +61,11 @@
 }
 
 - (void)purchaseStatsViewReady:(PurchaseStatsView *)view {
-    _settings = [[PurchaseStatsSettings alloc] init];
+    PurchaseStatsSettings *settings = [[PurchaseStatsSettings alloc] init];
     _store = [[PurchaseStatsStore alloc] init];
     _store.delegate = self;
-    _store.settings = _settings;
-    _fetcher.settings = _settings;
+    _store.settings = settings;
+    _fetcher.settings = settings;
 
     for (PurchaseStatsProduct *product in _store.visibleProducts) {
         [view addOrUpdateViewForProduct:product];
@@ -78,7 +76,7 @@
         [view showProduct:_lastProductURL];
     }
 
-    if (_settings.autoRefresh) {
+    if (settings.autoRefresh) {
         [_fetcher autoFetch];
     }
 }
