@@ -5,11 +5,9 @@ Version: 1.0
 Architecture: iphoneos-arm
 Description: Notification widget for Cydia Connect
 Author: joedj <purchasestats@joedj.net>
-Maintainer: BigBoss <bigboss@thebigboss.org>
+Maintainer: joedj <purchasestats@joedj.net>
 Section: Addons (NotificationCenter)
-Depiction: http://moreinfo.thebigboss.org/moreinfo/depiction.php?file=purchasestatsDp
-Homepage: http://moreinfo.thebigboss.org/moreinfo/depiction.php?file=purchasestatsDp
+Depiction: http://cydia.joedj.net/packages/purchasestats/
+Homepage: http://cydia.joedj.net/packages/purchasestats/
 Icon: file:///Library/WeeLoader/Plugins/PurchaseStats.bundle/PurchaseStats@2x.png
-Sponsor: thebigboss.org <http://thebigboss.org>
 Tag: role::developer
-dev: joejordan

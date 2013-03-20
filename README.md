@@ -5,6 +5,5 @@ PurchaseStats is an iOS notification center widget for [Cydia](https://cydia.sau
 
 PurchaseStats is not officially endorsed/blessed/supported by Cydia.
 
-No new icons are added to your home screen - settings live in the Notifications section of the Settings app.
-
-http://moreinfo.thebigboss.org/moreinfo/depiction.php?file=purchasestatsDp
+[Homepage](http://cydia.joedj.net/packages/purchasestats/)
+[Repository](http://cydia.joedj.net/)
