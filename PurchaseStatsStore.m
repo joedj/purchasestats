@@ -65,6 +65,7 @@
     if ((self = [super init])) {
         NSMutableDictionary *stats = [NSMutableDictionary dictionaryWithContentsOfFile:STORE_PLIST];
         _summary = [[PurchaseStatsProduct alloc] initWithDictionary:stats[@"summary"]];
+        _summary.dirty = NO;
         _products = [[NSMutableDictionary alloc] init];
         for (NSDictionary *productDict in stats[@"products"]) {
             PurchaseStatsProduct *product = [[PurchaseStatsProduct alloc] initWithDictionary:productDict];
@@ -120,19 +121,21 @@ static NSString *toDataURL(NSData *data) {
         product = _products[productURL];
     } else {
         product = _summary;
-        NSString *iconDataURL = d[@"iconDataURL"];
-        if (!_summary.iconDataURL && iconDataURL && !d[@"asyncIconResult"]) {
+        if (!d[@"asyncIconResult"]) {
             d = [[NSMutableDictionary alloc] initWithDictionary:d];
+            NSString *iconDataURL = d[@"iconDataURL"];
             [(NSMutableDictionary *)d removeObjectForKey:@"iconDataURL"];
-            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                NSData *iconData = [NSData dataWithContentsOfURL:[NSURL URLWithString:iconDataURL]];
-                if (iconData) {
-                    NSString *dataURL = toDataURL(iconData);
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        [self updateProductWithDictionary:@{ @"asyncIconResult" : @YES, @"iconDataURL" : dataURL }];
-                    });
-                }
-            });
+            if (iconDataURL && (!product.iconDataURL || /* hack to fix broken caches from previous version */[product.iconDataURL hasPrefix:@"http"])) {
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                    NSData *iconData = [NSData dataWithContentsOfURL:[NSURL URLWithString:iconDataURL]];
+                    if (iconData) {
+                        NSString *dataURL = toDataURL(iconData);
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            [self updateProductWithDictionary:@{ @"asyncIconResult" : @YES, @"iconDataURL" : dataURL }];
+                        });
+                    }
+                });
+            }
         }
     }
     if (!product) {
