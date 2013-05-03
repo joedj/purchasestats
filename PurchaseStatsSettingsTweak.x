@@ -25,7 +25,7 @@
                 get:@selector(readPreferenceValue:)
                 detail:nil cell:PSSwitchCell edit:nil];
             [autoRefresh setProperty:SETTINGS_DOMAIN forKey:@"defaults"];
-            [autoRefresh setProperty:SETTINGS_KEY_PASSWORD forKey:@"key"];
+            [autoRefresh setProperty:SETTINGS_KEY_AUTOREFRESH forKey:@"key"];
             [specs addObject:autoRefresh];
 
             [specs addObject:PSSpecifier.emptyGroupSpecifier];
