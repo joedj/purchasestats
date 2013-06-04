@@ -29,7 +29,7 @@
 }
 
 - (void)loadPlaceholderView {
-    _view = [[PurchaseStatsView alloc] init];
+    _view = [[PurchaseStatsView alloc] initWithFrame:CGRectMake(0, 0, 0, HEIGHT)];
     _view.delegate = self;
 }
 
