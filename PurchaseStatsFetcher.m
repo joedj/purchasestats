@@ -291,7 +291,7 @@ static NSString *stringToJSON(NSString *s, NSError **error) {
     if (response.statusCode != 200) {
         NSString *reason = [NSString stringWithFormat:@"Unable to scrape %@: %d %@",
             cxn.originalRequest.URL,
-            response.statusCode,
+            (int)response.statusCode,
             [NSHTTPURLResponse localizedStringForStatusCode:response.statusCode]];
         [self productConnectionFinished:cxn reason:reason];
     }
