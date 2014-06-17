@@ -210,20 +210,22 @@ static NSString *stringToJSON(NSString *s, NSError **error) {
             }
         }
         [self _fail:@"Couldn't find Google link on first page."];
-    } else if ([location hasPrefix:@"https://accounts.google.com/ServiceLogin"]) {
-        [self webView:webView setValue:_settings.username forElementId:@"Email"] &&
-        [self webView:webView setValue:_settings.password forElementId:@"Passwd"] &&
-        [self _countRequest] &&
-        [self webView:webView submitForm:@"gaia_loginform"];
-    } else if ([location hasPrefix:@"https://accounts.google.com/AccountChooser"]) {
-        if ([self _countRequest]) {
-            __autoreleasing NSError *error = nil;
-            NSString *jsUsername = stringToJSON(_settings.username, &error);
-            if (error || !jsUsername.length) {
-                [self _failHard:[NSString stringWithFormat:@"Unable to serialize username as JSON: %@", error]];
-            } else if (![webView stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:ACCOUNTCHOOSER_JS_MIN, jsUsername]].length) {
-                [self _fail:@"Unable to find username in account chooser."];
+    } else if ([location hasPrefix:@"https://accounts.google.com/"]) {
+        if ([webView stringByEvaluatingJavaScriptFromString:@"document.getElementById('accountchooser-title').innerHTML"].length) {
+            if ([self _countRequest]) {
+                __autoreleasing NSError *error = nil;
+                NSString *jsUsername = stringToJSON(_settings.username, &error);
+                if (error || !jsUsername.length) {
+                    [self _failHard:[NSString stringWithFormat:@"Unable to serialize username as JSON: %@", error]];
+                } else if (![webView stringByEvaluatingJavaScriptFromString:[NSString stringWithFormat:ACCOUNTCHOOSER_JS_MIN, jsUsername]].length) {
+                    [self _fail:@"Unable to find username in account chooser."];
+                }
             }
+        } else {
+            [self webView:webView setValue:_settings.username forElementId:@"Email"] &&
+            [self webView:webView setValue:_settings.password forElementId:@"Passwd"] &&
+            [self _countRequest] &&
+            [self webView:webView submitForm:@"gaia_loginform"];
         }
     } else if ([location hasPrefix:@"http://m.facebook.com/login.php"]) {
         if ([self _countRequest]) {
