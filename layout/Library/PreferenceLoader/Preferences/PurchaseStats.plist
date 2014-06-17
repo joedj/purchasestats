@@ -1,0 +1,10 @@
+{
+    entry = {
+        bundle = PurchaseStats;
+        cell = PSLinkCell;
+        detail = PurchaseStatsSettingsController;
+        icon = PurchaseStats.png;
+        isController = 1;
+        label = PurchaseStats;
+    };
+}

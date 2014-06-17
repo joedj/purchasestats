@@ -1,0 +1,13 @@
+{
+    CFBundleDevelopmentRegion = English;
+    CFBundleExecutable = PurchaseStats;
+    CFBundleIdentifier = "net.joedj.purchasestats.settings";
+    CFBundleInfoDictionaryVersion = "6.0";
+    CFBundlePackageType = BNDL;
+    CFBundleShortVersionString = "1.0.0";
+    CFBundleSignature = "????";
+    CFBundleVersion = "1.0";
+    DTPlatformName = iphoneos;
+    MinimumOSVersion = "5.0";
+    NSPrincipalClass = PurchaseStatsSettingsController;
+}
