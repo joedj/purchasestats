@@ -1,6 +1,6 @@
 Package: net.joedj.purchasestats
 Name: PurchaseStats
-Depends: firmware (>= 5.0), mobilesubstrate, com.chpwn.weeloader, org.thebigboss.customwidgeticons, preferenceloader
+Depends: firmware (>= 5.0), mobilesubstrate, com.chpwn.weeloader, preferenceloader, firmware (>> 7.0) | org.thebigboss.customwidgeticons
 Version: 1.0
 Architecture: iphoneos-arm
 Description: Notification widget for Cydia Connect
