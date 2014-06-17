@@ -33,7 +33,7 @@ static NSString *stringToJSON(NSString *s, NSError **error) {
 - (id)init {
     if ((self = [super init])) {
         _productDataRegex = [NSRegularExpression regularExpressionWithPattern:
-            @"<label>Total Sales</label>\\s*<label>(.*?)</label>.*<label>Pending Earnings</label>\\s*<label>(.*?)</label>"
+            @"<label><p>Total Sales</p></label>\\s*<label[^>]*><p>(.*?)</p></label>.*<label><p>Pending Earnings</p></label>\\s*<label[^>]*><p>(.*?)</p></label>"
             options:NSRegularExpressionDotMatchesLineSeparators error:NULL];
     }
     return self;

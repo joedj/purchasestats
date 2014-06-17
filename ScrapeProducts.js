@@ -58,10 +58,7 @@
         }
 
         if (!first) {
-            if (last) {
-                box = nodeAtPath('.//div');
-            }
-            product.incomeRate = stringAtPath('.//div//div');
+            product.incomeRate = stringAtPath('.//label//div//div');
             product.delta = stringAtPath('.//div//div//span[2]');
             product.direction = (nodeAtPath('.//div//div[last()]').style.color === 'red') ? '-' : '+';
         }
